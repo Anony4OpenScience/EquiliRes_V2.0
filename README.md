@@ -1,60 +1,44 @@
-# EquiliRes — anonymized reproducibility package
+EquiliRes Reproducibility Package
 
-This archive contains the evaluation code, graph inputs, and per-run result logs used for the ICLR 2027 submission and rebuttal. It is prepared for anonymous review. No author names, local machine paths, Git metadata, or personal email addresses are intentionally included.
+1. Environment
 
-## Contents
+Use Python 3.12. Install the dependencies in requirements.txt. To run the optional RUNG baseline, also install requirements-baselines.txt. The tested software versions are listed in ENVIRONMENT.md. The PyTorch build must match your CPU/CUDA setup.
 
-- `code/`: EquiliRes (Algorithm 2), evaluation harness, GCN-Jaccard, GNNGuard, RUNG adapters, adaptive-attack generator, and the additional rebuttal mechanism analysis.
-- `load_datasets/`: the dataset loader used to match the Pro-GNN/LCC benchmark protocol.
-- `data/nofeat/graph1` … `graph10`: the 10 independently attacked graph sets used by the topology-only paper protocol for Cora, Citeseer, Cora-ML, and Polblogs.
-- `data/official/`: clean feature-bearing benchmark data, fixed Pro-GNN splits, Metattack/DICE graphs, generated CE-PGD graphs, and Photo inputs used in the reported feature-bearing/standard-setting evaluations.
-- `results/`: selected JSONL per-run logs and diagnostics associated with paper/rebuttal tables. Logs are retained as run-level data; summary values can be recomputed from them.
-- `ext/RUNG/`: RUNG implementation needed by its included adapter. `ext/goodat_sep/` contains small supporting source files associated with archived GOOD-AT runs; the GOOD-AT run driver is not part of the current generic evaluation CLI.
-- `ENVIRONMENT.md`: software versions and reproducibility notes.
+Run all commands from this directory. All data paths are relative to it.
 
-Generated purification caches and exploratory OGB/arXiv results are omitted; they can be regenerated and are not inputs to the tables covered here.
+2. Topology-only setting (as in the paper)
 
-## Setup
+The topology-only protocol uses 10 independently generated attacked graphs. The following command runs one random seed on the first graph:
 
-Use Python 3.12 and install dependencies listed in `requirements.txt`. PyTorch should match the target CPU/CUDA environment. The reported results were produced with PyTorch 2.2.1 and the package versions listed in `ENVIRONMENT.md`.
-
-The code and bundled data are relocatable. Run commands from this directory; output logs should be written under `results/`.
-
-## Reproduce a small sanity run
-
-CPU, one seed, one rate:
-
-```bash
 CUDA_VISIBLE_DEVICES="" python code/run_eval.py \
   --datasets cora --attacks meta --rates 0.05 \
   --methods gcn equ_auto_b0.3 sjac_auto_b0.3 \
   --features identity --seeds 1 --seed0 0 --workers 1 \
-  --source nofeat --device cpu --out results/sanity.jsonl
-```
+  --source nofeat --device cpu --out results/cora_nofeat.jsonl
 
-For the standard feature-bearing setting:
+To run all 10 seeds/graphs, change --seeds 1 to --seeds 10. The program uses data/nofeat/graph1 to graph10 in turn.
 
-```bash
+3. Standard setting with node features
+
 CUDA_VISIBLE_DEVICES="" python code/run_eval.py \
   --datasets cora --attacks meta --rates 0.05 \
   --methods gcn equ_auto_b0.3 jac_t0.03 svd_k100 \
   --features standard --seeds 1 --seed0 0 --workers 1 \
-  --source official --device cpu --out results/sanity_official.jsonl
-```
+  --source official --device cpu --out results/cora_official.jsonl
 
-The ten-graph topology-only protocol uses `--source nofeat --seeds 10`. The official split setting uses `--source official`. Results are stochastic across training seeds; reproduce aggregate tables with the same datasets, attacks, selected validation-set hyperparameters, and seed ranges recorded in the paper/logs.
+To run 10 training seeds on the fixed official split, change --seeds 1 to --seeds 10.
 
-## Recompute the ASEP-mechanism measurements
+Available datasets: cora, citeseer, cora_ml, polblogs, photo (depending on the graphs and attack files included in data/).
+Available methods: gcn, equ_auto_b<B>, sjac_auto_b<B>, jac_t<T>, svd_k<K>, gnnguard, rung.
+(<B> is the budget b, <T> the Jaccard threshold, <K> the SVD rank.)
 
-```bash
+4. ASEP mechanism analysis
+
 CUDA_VISIBLE_DEVICES="" python code/z13_mech_homophily.py polblogs 3 0.5
 CUDA_VISIBLE_DEVICES="" python code/z13_mech_homophily.py cora 3 0.5
-```
 
-The script writes `results/z13_mech_homophily.jsonl`. Node labels are used only for post-hoc diagnostic metrics (edge homophily and inserted-edge identification); the EquiliRes method itself does not use labels.
+Per-graph diagnostics are written to results/z13_mech_homophily.jsonl. Node labels are used only for post-hoc diagnostics (edge homophily and inserted-edge identification); the EquiliRes algorithm itself does not use labels.
 
-## Notes
+5. Included results
 
-- The packaged source is the experiment implementation used by this submission/rebuttal; it also contains scripts for analyses that are not in the main paper tables. Consult each script's docstring and the per-run JSONL fields for its exact protocol.
-- Some rebuttal tables use runs performed with external baselines or teacher-provided logs. Their source logs are included only where available; the `results/` directory is not a guarantee that every externally reported cell has an independently archived raw log.
-- Use the graph splits and attack files shipped here rather than regenerating attacks if exact table reproduction is desired.
+results/ contains per-run JSONL logs and diagnostic results, from which the mean accuracy and standard deviation can be recomputed. The fixed data splits and attacked graphs are in data/; use these files to reproduce the paper's results.
