@@ -1,0 +1,5 @@
+Package hygiene checks performed before archiving:
+- No symlinks, Git metadata, Python bytecode caches, or OS metadata files.
+- No local machine paths or personal email addresses in source files or result logs.
+- No author names or affiliations in source, docs, or bundled results.
+- Third-party source README/license files are retained where provided.
